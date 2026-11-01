@@ -86,11 +86,6 @@
 		4E3525672DE4C72D00F39D8F /* libamd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4E3525662DE4C72D00F39D8F /* libamd.a */; };
 		4E8B155426273A580037FC53 /* Zip in Frameworks */ = {isa = PBXBuildFile; productRef = 4E8B155326273A580037FC53 /* Zip */; };
 		4EB1A66625A0D90B0043C7BF /* RTABMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EB1A66525A0D90B0043C7BF /* RTABMap.swift */; };
-		BB2604211300000000000001 /* PhotoMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2604211300000000000002 /* PhotoMetadata.swift */; };
-		BB2604211300000000000003 /* PixelBufferJPEG.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2604211300000000000004 /* PixelBufferJPEG.swift */; };
-		BB2604211300000000000005 /* ManualPhotoStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2604211300000000000006 /* ManualPhotoStore.swift */; };
-		BB2604211300000000000007 /* PhotoMetadataEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2604211300000000000008 /* PhotoMetadataEditor.swift */; };
-		BB2604211300000000000009 /* ManualPhotoGalleryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB260421130000000000000A /* ManualPhotoGalleryViewController.swift */; };
 		4EE016B3259BE441008CCE65 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EE016AF259BE441008CCE65 /* ViewController.swift */; };
 		4EE016B4259BE441008CCE65 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EE016B0259BE441008CCE65 /* SceneDelegate.swift */; };
 		4EE016B9259BE449008CCE65 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EE016B8259BE449008CCE65 /* AppDelegate.swift */; };
@@ -130,6 +125,11 @@
 		4EFD0F62259E341C00575D88 /* RTABMapApp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4EFD0F61259E341C00575D88 /* RTABMapApp.cpp */; };
 		4EFD0F67259E38DE00575D88 /* NativeWrapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4EFD0F66259E38DE00575D88 /* NativeWrapper.cpp */; };
 		4EFD0F70259F847300575D88 /* background_renderer.cc in Sources */ = {isa = PBXBuildFile; fileRef = 4EFD0F6E259F847300575D88 /* background_renderer.cc */; };
+		BB2604211300000000000001 /* PhotoMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2604211300000000000002 /* PhotoMetadata.swift */; };
+		BB2604211300000000000003 /* PixelBufferJPEG.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2604211300000000000004 /* PixelBufferJPEG.swift */; };
+		BB2604211300000000000005 /* ManualPhotoStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2604211300000000000006 /* ManualPhotoStore.swift */; };
+		BB2604211300000000000007 /* PhotoMetadataEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2604211300000000000008 /* PhotoMetadataEditor.swift */; };
+		BB2604211300000000000009 /* ManualPhotoGalleryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB260421130000000000000A /* ManualPhotoGalleryViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -192,11 +192,6 @@
 		4E3525662DE4C72D00F39D8F /* libamd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libamd.a; path = RTABMapApp/Libraries/lib/libamd.a; sourceTree = "<group>"; };
 		4E401BE825CC92C100240A56 /* ProgressionStatus.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ProgressionStatus.h; path = ../android/jni/ProgressionStatus.h; sourceTree = "<group>"; };
 		4EB1A66525A0D90B0043C7BF /* RTABMap.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = RTABMap.swift; path = RTABMapApp/RTABMap.swift; sourceTree = "<group>"; };
-		BB2604211300000000000002 /* PhotoMetadata.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = PhotoMetadata.swift; path = RTABMapApp/PhotoMetadata.swift; sourceTree = "<group>"; };
-		BB2604211300000000000004 /* PixelBufferJPEG.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = PixelBufferJPEG.swift; path = RTABMapApp/PixelBufferJPEG.swift; sourceTree = "<group>"; };
-		BB2604211300000000000006 /* ManualPhotoStore.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = ManualPhotoStore.swift; path = RTABMapApp/ManualPhotoStore.swift; sourceTree = "<group>"; };
-		BB2604211300000000000008 /* PhotoMetadataEditor.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = PhotoMetadataEditor.swift; path = RTABMapApp/PhotoMetadataEditor.swift; sourceTree = "<group>"; };
-		BB260421130000000000000A /* ManualPhotoGalleryViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = ManualPhotoGalleryViewController.swift; path = RTABMapApp/ManualPhotoGalleryViewController.swift; sourceTree = "<group>"; };
 		4ED73AD02D7FECF3007899C2 /* liblaszip.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = liblaszip.a; path = RTABMapApp/Libraries/lib/liblaszip.a; sourceTree = "<group>"; };
 		4EE015C2259A2AF0008CCE65 /* RTABMapApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RTABMapApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4EE016AF259BE441008CCE65 /* ViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = ViewController.swift; path = RTABMapApp/ViewController.swift; sourceTree = "<group>"; };
@@ -375,6 +370,11 @@
 		4EFD0F66259E38DE00575D88 /* NativeWrapper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = NativeWrapper.cpp; path = RTABMapApp/NativeWrapper.cpp; sourceTree = SOURCE_ROOT; };
 		4EFD0F6E259F847300575D88 /* background_renderer.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = background_renderer.cc; path = ../android/jni/background_renderer.cc; sourceTree = "<group>"; };
 		4EFD0F6F259F847300575D88 /* background_renderer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = background_renderer.h; path = ../android/jni/background_renderer.h; sourceTree = "<group>"; };
+		BB2604211300000000000002 /* PhotoMetadata.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = PhotoMetadata.swift; path = RTABMapApp/PhotoMetadata.swift; sourceTree = "<group>"; };
+		BB2604211300000000000004 /* PixelBufferJPEG.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = PixelBufferJPEG.swift; path = RTABMapApp/PixelBufferJPEG.swift; sourceTree = "<group>"; };
+		BB2604211300000000000006 /* ManualPhotoStore.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = ManualPhotoStore.swift; path = RTABMapApp/ManualPhotoStore.swift; sourceTree = "<group>"; };
+		BB2604211300000000000008 /* PhotoMetadataEditor.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = PhotoMetadataEditor.swift; path = RTABMapApp/PhotoMetadataEditor.swift; sourceTree = "<group>"; };
+		BB260421130000000000000A /* ManualPhotoGalleryViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = ManualPhotoGalleryViewController.swift; path = RTABMapApp/ManualPhotoGalleryViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1063,9 +1063,9 @@
 				CODE_SIGN_ENTITLEMENTS = RTABMapApp/RTABMapApp.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEFINES_MODULE = YES;
-				DEVELOPMENT_TEAM = 3RRB6NV8U9;
+				DEVELOPMENT_TEAM = PF4263987A;
 				EXCLUDED_ARCHS = "";
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1092,7 +1092,7 @@
 				);
 				MARKETING_VERSION = 0.24.2;
 				OTHER_CFLAGS = "";
-				PRODUCT_BUNDLE_IDENTIFIER = com.introlab.rtabmap;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nodalit.rtabmap;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "RTABMapApp/$(SWIFT_MODULE_NAME)-Bridging-Header.h";
@@ -1124,9 +1124,9 @@
 				CODE_SIGN_ENTITLEMENTS = RTABMapApp/RTABMapApp.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEFINES_MODULE = YES;
-				DEVELOPMENT_TEAM = 3RRB6NV8U9;
+				DEVELOPMENT_TEAM = PF4263987A;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/RTABMapApp/Libraries/lib",
@@ -1154,7 +1154,7 @@
 				MARKETING_VERSION = 0.24.2;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = "";
-				PRODUCT_BUNDLE_IDENTIFIER = com.introlab.rtabmap;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nodalit.rtabmap;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "RTABMapApp/$(SWIFT_MODULE_NAME)-Bridging-Header.h";

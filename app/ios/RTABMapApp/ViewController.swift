@@ -732,7 +732,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             viewButton.isHidden = !mHudVisible
             newScanButtonLarge.isHidden = true // WELCOME button
             recordButton.isHidden = true
-            photoButton.isHidden = !mHudVisible
+            photoButton.isHidden = false
             stopButton.isHidden = false
             closeVisualizationButton.isHidden = true
             stopCameraButton.isHidden = true
