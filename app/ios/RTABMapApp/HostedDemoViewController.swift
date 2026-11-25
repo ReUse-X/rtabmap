@@ -95,6 +95,7 @@ class HostedDemoViewController: UIViewController {
 
     private func log(_ line: String) {
         logView.text += line + "\n"
+        logView.scrollRangeToVisible(NSRange(location: (logView.text as NSString).length, length: 0))
     }
 
     @objc private func newScan() {
