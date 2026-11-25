@@ -69,8 +69,10 @@ final class ManualPhotoStore {
 
     /// Delete the tmp session folder matching `dbFilename`, then mint a new session folder.
     /// Call this from `newScan()` when the rtabmap tmp DB is wiped.
+    /// If it throws, no session is current.
     @discardableResult
     func startNewSession(dbFilename: String?, appVersion: String) throws -> String {
+        currentSessionId = nil      // the previous scan's session must not receive the next scan's photos
         try ensureDir(rootURL)
 
         // Delete any prior folders that point at the same tmp dbFilename (keeps Documents/ tidy).
@@ -116,49 +118,68 @@ final class ManualPhotoStore {
     }
 
     /// The scan file `oldFilename` is now called `newFilename`: it was renamed, or recovered under a new name.
-    /// Its sessions follow it. Nothing is deleted: a session that already names `newFilename` is left as it is.
+    /// Call it once, after the move succeeded, for a move onto a name no file had.
+    /// Its sessions follow it. A session that already named `newFilename` was left behind by a file that is
+    /// gone: it gives the name up (its `dbFilename` becomes nil) and keeps its photos. Nothing is deleted.
     /// Works without a current session.
     func databaseMoved(from oldFilename: String, to newFilename: String) throws {
         guard oldFilename != newFilename else { return }
+        // Listed before the moved sessions take the name, so none of them is ever among these.
+        let leftBehind = try sessions(naming: newFilename)
         for var entry in try sessions(naming: oldFilename) {
             entry.session.dbFilename = newFilename
             try writeSessionJSON(entry.session, at: entry.folder)
         }
+        // Released only once the moved sessions name the file: a stop in between leaves two sessions
+        // naming it, never a scan without its photos.
+        try releaseNames(leftBehind)
     }
 
     /// The current session's scan was saved as `filename`. `previous` is the file name the scan had before
-    /// this save, nil for a scan that was never saved. `overwroteExisting` is true when the save replaced a
-    /// file that already had that name, which the user confirmed before saving.
-    /// If `previous` is a different name whose file still exists, the save made a second scan: `previous`
-    /// keeps the current session, and `filename` gets a copy of it that becomes current. Otherwise the
-    /// current session now names `filename`.
-    /// When `overwroteExisting` is true and the replaced file was another scan (`previous` is not
-    /// `filename`), the other sessions that name `filename` belonged to that scan and are deleted.
-    /// In every other case nothing is deleted: a scan saved under its own name replaces only itself.
+    /// this save; when it is nil, the name the current session holds is used. `overwroteExisting` is true
+    /// when the save replaced a file that already had that name, which the user confirmed before saving.
+    /// If the earlier name is a different one whose file still exists, the save made a second scan: the
+    /// earlier file keeps the current session, and `filename` gets a copy of it that becomes current.
+    /// Otherwise the current session now names `filename`.
+    /// The other sessions that name `filename`:
+    /// - when the scan was saved under its own name, they are left as they are;
+    /// - when `overwroteExisting` is true, they belonged to the scan that was replaced, and are deleted;
+    /// - otherwise no file had the name, so they were left behind by a file that is gone: they give the
+    ///   name up (their `dbFilename` becomes nil) and keep their photos.
     func recordSavedDB(filename: String, previous: String? = nil, overwroteExisting: Bool = false) throws {
-        // Listed before the current session or its copy takes the name, so neither is ever among them.
-        let replaced = overwroteExisting && previous != filename
-            ? try sessions(naming: filename).filter { $0.session.sessionId != currentSessionId }
-            : []
+        let url = currentSessionURL()
+        let current = try url.map { try readSessionJSON(at: $0) }
+        let earlier = previous ?? current?.dbFilename
 
-        guard let url = currentSessionURL() else {
-            try removeSessions(replaced)
+        // Listed before the current session or its copy takes the name, so neither is ever among them.
+        let others = earlier == filename
+            ? []
+            : try sessions(naming: filename).filter { $0.session.sessionId != currentSessionId }
+        func settleOthers() throws {
+            if overwroteExisting {
+                try removeSessions(others)
+            } else {
+                try releaseNames(others)
+            }
+        }
+
+        guard let url = url, var s = current else {
+            try settleOthers()
             return
         }
-        var s = try readSessionJSON(at: url)
 
-        if let previous = previous, previous != filename,
-           fm.fileExists(atPath: documentsURL.appendingPathComponent(previous).path) {
-            // The original file keeps the current session whatever happens, so the replaced sessions
-            // go first: a copy that fails then leaves no other scan's photos on the saved file.
-            try removeSessions(replaced)
+        if let earlier = earlier, earlier != filename,
+           fm.fileExists(atPath: documentsURL.appendingPathComponent(earlier).path) {
+            // The earlier file keeps the current session whatever happens, so the others go first:
+            // a copy that fails then leaves no other scan's photos on the saved file.
+            try settleOthers()
             currentSessionId = try copySession(s, from: url, naming: filename)
         } else {
-            // The current session takes the new name before anything is deleted: if a deletion fails
+            // The current session takes the new name before the others change: if a deletion fails
             // or the app stops, the saved scan's photos already name the saved file.
             s.dbFilename = filename
             try writeSessionJSON(s, at: url)
-            try removeSessions(replaced)
+            try settleOthers()
         }
     }
 
@@ -286,6 +307,15 @@ final class ManualPhotoStore {
     private func removeSessions(_ entries: [(folder: URL, session: SessionJSON)]) throws {
         for entry in entries {
             try fm.removeItem(at: entry.folder)
+        }
+    }
+
+    /// Each of `entries` gives up the file name it holds: its `dbFilename` becomes nil. Its folder and
+    /// photos stay on disk. A session without a name is never attached to a scan, nor deleted with one.
+    private func releaseNames(_ entries: [(folder: URL, session: SessionJSON)]) throws {
+        for var entry in entries {
+            entry.session.dbFilename = nil
+            try writeSessionJSON(entry.session, at: entry.folder)
         }
     }
 

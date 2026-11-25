@@ -21,7 +21,7 @@ final class ScanFileChangeTests: XCTestCase {
     }
 
     func testARenameCarriesBothNamesExactly() {
-        let change = ScanFileChange(kind: .renamed, fileName: "Vesterbrogade 12 – kælder v1.2.db",
+        let change = ScanFileChange(kind: .renamed, fileName: "Blå stue – kælder æøå v1.2.db",
                                     previousFileName: "261125-101500.db")
         XCTAssertEqual(roundTrip(change), change)
     }

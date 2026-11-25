@@ -2,7 +2,7 @@ import XCTest
 @testable import AppLogic
 
 final class PhotosFollowScanTests: StoreTestCase {
-    let danish = "Vesterbrogade 12 – kælder v1.2.db"
+    let danish = "Blå stue – kælder æøå v1.2.db"
 
     // MARK: Renamed in the Library
 
@@ -15,21 +15,26 @@ final class PhotosFollowScanTests: StoreTestCase {
         XCTAssertEqual(store.currentPhotoCount(), 2)
     }
 
-    /// A session may be left naming a file that is gone. A move onto that name deletes nothing.
-    func testMovingNeverDeletesASession() throws {
+    /// A session can be left naming a file that is gone (the file was removed outside the app). When
+    /// another scan takes that name, the left-behind session gives the name up: its photos stay on
+    /// disk, attached to no scan, and nothing is deleted.
+    func testMovingOntoANameALeftBehindSessionClaimsReleasesThatClaim() throws {
         let moved = try makeSession(for: "A.db", photos: 1)
-        let other = try makeSession(for: "B.db", photos: 3)
+        let leftBehind = try makeSession(for: "B.db", photos: 3)
         try store.databaseMoved(from: "A.db", to: "B.db")
-        XCTAssertEqual(Set(try sessions(naming: "B.db").map(\.folder)), [moved, other])
-        XCTAssertEqual(store.photos(in: moved).count, 1)
-        XCTAssertEqual(store.photos(in: other).count, 3)
+        XCTAssertEqual(try sessions(naming: "B.db").map(\.folder), [moved])
+        let other = try XCTUnwrap(try sessionsOnDisk().first { $0.folder == leftBehind })
+        XCTAssertNil(other.json.dbFilename)
+        XCTAssertEqual(store.photos(in: leftBehind).count, 3)
+        XCTAssertEqual(store.attachSession(for: "B.db"), moved)
     }
 
-    func testMovingAScanWithoutPhotosLeavesOtherSessionsAlone() throws {
-        let other = try makeSession(for: "B.db", photos: 3)
+    func testMovingAScanWithoutPhotosAlsoReleasesALeftBehindClaim() throws {
+        let leftBehind = try makeSession(for: "B.db", photos: 3)
         try store.databaseMoved(from: "A.db", to: "B.db")
-        XCTAssertEqual(try sessionsOnDisk().map(\.folder), [other])
-        XCTAssertEqual(store.photos(in: other).count, 3)
+        XCTAssertTrue(try sessions(naming: "B.db").isEmpty)
+        XCTAssertEqual(try sessionsOnDisk().map(\.folder), [leftBehind])
+        XCTAssertEqual(store.photos(in: leftBehind).count, 3)
     }
 
     func testMovingToTheSameNameChangesNothing() throws {
@@ -80,16 +85,17 @@ final class PhotosFollowScanTests: StoreTestCase {
         XCTAssertEqual(store.currentPhotoCount(), 1)
     }
 
-    /// No file had the name, so the customer was never asked to overwrite anything: a session left
-    /// naming that file stays, and the new scan's session is the one that attaches.
-    func testSavingUnderANameNoFileHadDeletesNothing() throws {
+    /// No file had the name, so the user was never asked to overwrite anything: a session left naming
+    /// that file is not deleted. It gives the name up, and the saved scan's session is the only one naming it.
+    func testSavingUnderANameNoFileHadReleasesALeftBehindClaimAndDeletesNothing() throws {
         try writeSession(id: "LEFT-BEHIND", dbFilename: "Kitchen.db", createdAt: Date(timeIntervalSince1970: 1_000))
         let new = try store.startNewSession(dbFilename: "rtabmap.tmp.db", appVersion: "test")
         try addPhoto()
         touch("Kitchen.db")                             // the save wrote the file
         try store.recordSavedDB(filename: "Kitchen.db", previous: nil)
-        XCTAssertEqual(Set(try sessions(naming: "Kitchen.db").map(\.folder)), ["LEFT-BEHIND", new])
-        XCTAssertEqual(store.attachSession(for: "Kitchen.db"), new)
+        XCTAssertEqual(try sessions(naming: "Kitchen.db").map(\.folder), [new])
+        XCTAssertEqual(Set(try sessionsOnDisk().map(\.folder)), ["LEFT-BEHIND", new])
+        XCTAssertNil(try XCTUnwrap(try sessionsOnDisk().first { $0.folder == "LEFT-BEHIND" }).json.dbFilename)
         XCTAssertEqual(store.currentPhotoCount(), 1)
     }
 
@@ -160,7 +166,7 @@ final class PhotosFollowScanTests: StoreTestCase {
         touch("A.db")
         XCTAssertEqual(store.attachSession(for: "A.db"), own)
         try store.recordSavedDB(filename: "A.db", previous: "A.db", overwroteExisting: true)
-        XCTAssertEqual(Set(try sessionsOnDisk().map(\.folder)), [own, "OTHER"])
+        XCTAssertEqual(Set(try sessions(naming: "A.db").map(\.folder)), [own, "OTHER"])
         XCTAssertEqual(store.currentSessionId, own)
         XCTAssertEqual(store.photos(in: own).count, 1)
     }
@@ -170,5 +176,74 @@ final class PhotosFollowScanTests: StoreTestCase {
         touch("Kitchen.db")
         try store.recordSavedDB(filename: "Kitchen.db", previous: nil, overwroteExisting: true)
         XCTAssertTrue(try sessionsOnDisk().isEmpty)
+    }
+
+    // MARK: The earlier name, when the caller does not give it
+
+    /// The caller can lose track of the name a scan had. The current session still knows it.
+    func testTheCurrentSessionSuppliesTheEarlierNameWhenTheCallerDoesNot() throws {
+        let original = try makeSession(for: "A.db", photos: 2)
+        touch("A.db")
+        _ = store.attachSession(for: "A.db")
+        touch("B.db")                                   // the save wrote a second file
+        try store.recordSavedDB(filename: "B.db", previous: nil)
+        XCTAssertEqual(try sessions(naming: "A.db").map(\.folder), [original])
+        XCTAssertEqual(store.photos(in: original).count, 2)
+        XCTAssertEqual(try sessions(naming: "B.db").count, 1)
+        XCTAssertNotEqual(store.currentSessionId, original)
+        XCTAssertEqual(store.currentPhotoCount(), 2)
+    }
+
+    func testASaveUnderTheScansOwnNameIsRecognisedWithoutTheCallerSayingSo() throws {
+        let own = try makeSession(for: "A.db", photos: 1)
+        try writeSession(id: "OTHER", dbFilename: "A.db", createdAt: Date(timeIntervalSince1970: 1_000))
+        touch("A.db")
+        XCTAssertEqual(store.attachSession(for: "A.db"), own)
+        try store.recordSavedDB(filename: "A.db", previous: nil, overwroteExisting: true)
+        XCTAssertEqual(Set(try sessions(naming: "A.db").map(\.folder)), [own, "OTHER"])
+        XCTAssertEqual(store.currentSessionId, own)
+    }
+
+    func testAFailedStartLeavesNoSessionCurrent() throws {
+        try makeSession(for: "A.db", photos: 1)
+        _ = store.attachSession(for: "A.db")
+        let root = docs.appendingPathComponent("ManualPhotos")
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: root.path)   // no folder can be made
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: root.path) }
+
+        XCTAssertThrowsError(try store.startNewSession(dbFilename: "rtabmap.tmp.db", appVersion: "test"))
+        XCTAssertNil(store.currentSessionId)
+    }
+
+    // MARK: An opened scan saved over another scan
+
+    func testSavingAnOpenedScanOverAnotherScanReplacesThatScansPhotos() throws {
+        let original = try makeSession(for: "A.db", photos: 2)
+        let replaced = try makeSession(for: "B.db", photos: 3)
+        touch("A.db")
+        touch("B.db")
+        _ = store.attachSession(for: "A.db")
+        try store.recordSavedDB(filename: "B.db", previous: "A.db", overwroteExisting: true)
+        XCTAssertFalse(try sessionsOnDisk().map(\.folder).contains(replaced))
+        XCTAssertEqual(try sessions(naming: "A.db").map(\.folder), [original])
+        XCTAssertEqual(store.photos(in: original).count, 2)
+        let copies = try sessions(naming: "B.db")
+        XCTAssertEqual(copies.count, 1)
+        XCTAssertEqual(store.currentSessionId, copies[0].folder)
+        XCTAssertEqual(store.currentPhotoCount(), 2)
+    }
+
+    func testACopyThatFailsLeavesNoHalfMadeSession() throws {
+        let original = try makeSession(for: "A.db", photos: 2)
+        touch("A.db")
+        _ = store.attachSession(for: "A.db")
+        touch("B.db")
+        let photo = try XCTUnwrap(store.currentPhotos().first).jpegURL
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: photo.path)   // cannot be read, so cannot be copied
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: photo.path) }
+
+        XCTAssertThrowsError(try store.recordSavedDB(filename: "B.db", previous: "A.db"))
+        XCTAssertEqual(try sessionsOnDisk().map(\.folder), [original])
+        XCTAssertEqual(store.currentSessionId, original)
     }
 }
