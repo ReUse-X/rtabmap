@@ -44,6 +44,9 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     private var mDataRecording = false
     
     private var mReviewRequested = false
+    var host: ScannerHost?
+    private var mHostActionStarted = false
+    private var mUnsavedRecording = false
     
     private var mMaximumMemory: Int = 0
     
@@ -207,6 +210,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         // Do any additional setup after loading the view.
         
         self.toastLabel.isHidden = true
+        if host != nil { newScanButtonLarge.isHidden = true }
         session.delegate = self
         
         addShadow(stopButton)
@@ -815,7 +819,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             libraryButton.isHidden = mState != .STATE_WELCOME && !mHudVisible
             menuButton.isHidden = mState != .STATE_WELCOME && !mHudVisible
             viewButton.isHidden = mState != .STATE_WELCOME && !mHudVisible
-            newScanButtonLarge.isHidden = mState != .STATE_WELCOME
+            newScanButtonLarge.isHidden = mState != .STATE_WELCOME || (host != nil && !mHostActionStarted)
             recordButton.isHidden = true
             photoButton.isHidden = true
             stopButton.isHidden = true
@@ -1062,7 +1066,15 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
              })
         ])
 
-        menuButton.menu = UIMenu(title: "", children: [fileMenu, settingsMenu])
+        var menuChildren: [UIMenuElement] = [fileMenu, settingsMenu]
+        if host != nil {
+            let close = UIAction(title: "Close Scanner", image: UIImage(systemName: "xmark"),
+                                 attributes: canTearDown ? [] : .disabled, handler: { [weak self] _ in
+                self?.requestClose()
+            })
+            menuChildren.append(UIMenu(title: "", options: .displayInline, children: [close]))
+        }
+        menuButton.menu = UIMenu(title: "", children: menuChildren)
         menuButton.addTarget(self, action: #selector(ViewController.menuOpened(_:)), for: .menuActionTriggered)
         
         // Camera menu
@@ -1335,6 +1347,32 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         UIApplication.shared.isIdleTimerDisabled = true
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        guard let host = host, !mHostActionStarted else { return }
+        mHostActionStarted = true
+        switch host.initialAction {
+        case .newScan:
+            newScan()
+        case .open(let url):
+            if FileManager.default.fileExists(atPath: url.path) {
+                openDatabase(fileUrl: url)
+            } else {
+                // Opening a missing file would create an empty database under that name.
+                updateState(state: mState)
+                showToast(message: "\"\(url.lastPathComponent)\" was not found.", seconds: 3)
+            }
+        }
+    }
+    
+    override func dismiss(animated flag: Bool, completion: (() -> Void)? = nil) {
+        if host != nil && presentedViewController == nil {
+            completion?()   // nothing of ours to dismiss; do not let it close this screen
+            return
+        }
+        super.dismiss(animated: flag, completion: completion)
+    }
+    
     var statusBarOrientation: UIInterfaceOrientation? {
         get {
             guard let orientation = UIApplication.shared.windows.first?.windowScene?.interfaceOrientation else {
@@ -1390,6 +1428,26 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         viewButton.menu = nil
         UIApplication.shared.isIdleTimerDisabled = false
         return true
+    }
+    
+    /// "Close Scanner" in the menu, when a host is set.
+    private func requestClose() {
+        guard canTearDown else { return }
+        guard mUnsavedRecording else { closeForHost(); return }
+        let alert = UIAlertController(title: "Scan Not Saved",
+                                      message: "This scan has changes that are not saved.",
+                                      preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Save", style: .default) { _ in self.save() })
+        alert.addAction(UIAlertAction(title: "Close Without Saving", style: .destructive) { _ in self.closeForHost() })
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
+        present(alert, animated: true)
+    }
+    
+    private func closeForHost() {
+        let didClose = host?.didClose
+        guard tearDown() else { return }
+        host = nil          // from here on dismiss() behaves normally again
+        didClose?()
     }
     
     var firstTouch: UITouch?
@@ -1679,7 +1737,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     func newScan(dataRecordingMode: Bool = false)
     {
         print("databases.size() = \(databases.size())")
-        if(databases.count >= 10 && !mReviewRequested && self.depthSupported)
+        if(host == nil && databases.count >= 10 && !mReviewRequested && self.depthSupported)
         {
             SKStoreReviewController.requestReviewInCurrentScene()
             mReviewRequested = true
@@ -1809,6 +1867,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             self.rtabmap!.setDataRecorderMode(enabled: dataRecordingMode)
             self.optimizedGraphShown = true // Always reset to true when opening a database
             self.rtabmap!.openDatabase(databasePath: tmpDatabase.path, databaseInMemory: inMemory, optimize: false, clearDatabase: true)
+            mUnsavedRecording = false
 
             do {
                 let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"
@@ -1941,6 +2000,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             } catch {
                 print("ManualPhotoStore.recordSavedDB failed: \(error)")
             }
+            self.mUnsavedRecording = false
             ScanFileChange(kind: .saved, fileName: fileName).post()
             do {
                 let tmpDatabase = self.getDocumentDirectory().appendingPathComponent(self.RTABMAP_TMP_DB)
@@ -2266,6 +2326,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         }
         
         openedDatabasePath = fileUrl;
+        mUnsavedRecording = false
         let fileName: String = self.openedDatabasePath!.lastPathComponent
         if ManualPhotoStore.shared.attachSession(for: fileName) == nil {
             // First-time open of this DB (or a DB shared in from elsewhere) — mint a session
@@ -2674,6 +2735,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         rtabmap?.setPausedMapping(paused: false);
         lowMemoryWarningShown = false
         updateState(state: .STATE_MAPPING)
+        mUnsavedRecording = true
     }
 
     @IBAction func takePhotoAction(_ sender: UIButton) {
