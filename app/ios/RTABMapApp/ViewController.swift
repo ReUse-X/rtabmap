@@ -1437,7 +1437,9 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         let alert = UIAlertController(title: "Scan Not Saved",
                                       message: "This scan has changes that are not saved.",
                                       preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "Save", style: .default) { _ in self.save() })
+        if mState != .STATE_CAMERA { // with the camera on, the scan is saved from the menu after stopping it
+            alert.addAction(UIAlertAction(title: "Save", style: .default) { _ in self.save() })
+        }
         alert.addAction(UIAlertAction(title: "Close Without Saving", style: .destructive) { _ in self.closeForHost() })
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
         present(alert, animated: true)
@@ -1867,7 +1869,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             self.rtabmap!.setDataRecorderMode(enabled: dataRecordingMode)
             self.optimizedGraphShown = true // Always reset to true when opening a database
             self.rtabmap!.openDatabase(databasePath: tmpDatabase.path, databaseInMemory: inMemory, optimize: false, clearDatabase: true)
-            mUnsavedRecording = false
+            mUnsavedRecording = mState == .STATE_MAPPING // a session restarted while recording goes on recording
 
             do {
                 let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"

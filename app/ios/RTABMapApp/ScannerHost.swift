@@ -8,6 +8,9 @@
 import Foundation
 
 /// Set on the scanning screen by an app that shows it inside its own interface. Nil in the standalone app.
+/// While it is set, the screen ignores `dismiss(animated:completion:)` called on the screen itself, because
+/// the screen makes that call to close its own alerts. A host that takes the screen away without waiting
+/// for `didClose` dismisses it from the presenting controller instead.
 struct ScannerHost {
     enum InitialAction {
         case newScan       // start a new scan with the camera on, as "New Scan" on the welcome screen does
