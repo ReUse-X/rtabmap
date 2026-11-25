@@ -1719,6 +1719,9 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                             success = self.rtabmap!.recover(from: tmpDatabase.path, to: outputDbPath)
                             
                         }, completion:{
+                            if success {
+                                try? ManualPhotoStore.shared.databaseMoved(from: self.RTABMAP_TMP_DB, to: fileName)
+                            }
                             if(indicator != nil)
                             {
                                 indicator!.stopAnimating()
@@ -1861,6 +1864,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     func saveDatabase(fileName: String)
     {
         let filePath = self.getDocumentDirectory().appendingPathComponent(fileName).path
+        let overwroteExisting = FileManager.default.fileExists(atPath: filePath) // the user confirmed this in save()
         
         let indicator: UIActivityIndicatorView = UIActivityIndicatorView(style: .large)
         indicator.frame = CGRect(x: 0.0, y: 0.0, width: 60.0, height: 60.0)
@@ -1880,6 +1884,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             indicator.stopAnimating()
             indicator.removeFromSuperview()
             
+            let previousName = self.openedDatabasePath?.lastPathComponent
             self.openedDatabasePath = URL(fileURLWithPath: filePath)
             
             let alert = UIAlertController(title: "Database saved!", message: String(format: "Database \"%@\" successfully saved!", fileName), preferredStyle: .alert)
@@ -1888,7 +1893,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             }
             alert.addAction(yes)
             self.present(alert, animated: true, completion: nil)
-            try? ManualPhotoStore.shared.recordSavedDB(filename: fileName)
+            try? ManualPhotoStore.shared.recordSavedDB(filename: fileName, previous: previousName, overwroteExisting: overwroteExisting)
             do {
                 let tmpDatabase = self.getDocumentDirectory().appendingPathComponent(self.RTABMAP_TMP_DB)
                 try FileManager.default.removeItem(at: tmpDatabase)
@@ -2286,6 +2291,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                         
                         do {
                             try FileManager.default.moveItem(at: fileURL, to: URL(fileURLWithPath: filePath))
+                            try? ManualPhotoStore.shared.databaseMoved(from: fileURL.lastPathComponent, to: fileName)
                             print("File \(fileURL) renamed to \(filePath)")
                         }
                         catch {
@@ -2303,6 +2309,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                 } else {
                     do {
                         try FileManager.default.moveItem(at: fileURL, to: URL(fileURLWithPath: filePath))
+                        try? ManualPhotoStore.shared.databaseMoved(from: fileURL.lastPathComponent, to: fileName)
                         print("File \(fileURL) renamed to \(filePath)")
                     }
                     catch {
@@ -2936,12 +2943,12 @@ extension ViewController: DatabaseViewDelegate {
         
         do {
             try FileManager.default.removeItem(at: databaseURL)
+            ManualPhotoStore.shared.deleteSession(for: databaseURL.lastPathComponent)
             print("File \(databaseURL) deleted")
         }
         catch {
             print("Error deleting file \(databaseURL)")
         }
-        ManualPhotoStore.shared.deleteSession(for: databaseURL.lastPathComponent)
         self.updateDatabases()
         if(!databases.isEmpty)
         {
