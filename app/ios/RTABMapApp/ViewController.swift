@@ -44,8 +44,9 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     private var mDataRecording = false
     
     private var mReviewRequested = false
-    /// Set by an app that shows this screen inside its own interface; nil in the standalone app. Set it after
-    /// creating the controller and before the screen is shown. `ScannerHost` describes what a host has to do.
+    /// Set by an app that shows this screen inside its own interface; nil in the standalone app. Set it right
+    /// after creating the controller, before anything loads its view. `ScannerHost` describes what a host has
+    /// to do.
     var host: ScannerHost?
     private var mHostActionStarted = false
     private var mUnsavedRecording = false

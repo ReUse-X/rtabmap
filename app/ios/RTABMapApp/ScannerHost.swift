@@ -14,8 +14,10 @@ import Foundation
 /// - Ship `Settings.bundle` in the app. The screen reads its settings from `UserDefaults.standard` and
 ///   expects every key to have a value; when hosted it registers the bundle's default values itself
 ///   before it reads them.
-/// - Create the screen as the initial view controller of the "Main" storyboard, set its `host`, and
-///   present it full screen without animation: the initial action starts once the screen has appeared.
+/// - Create the screen as the initial view controller of the "Main" storyboard, set its `host` before
+///   anything loads its view, and present it full screen without animation: the initial action starts
+///   once the screen has appeared.
+/// - A scan to open must be a file in the app's Documents folder.
 /// - Have at most one screen alive at a time, and create a new one for every opening.
 /// - The user leaves through "Close Scanner" in the screen's menu. The screen then tears itself down
 ///   (`ViewController.tearDown()`) and calls `didClose`; take the screen off display right there. Until
