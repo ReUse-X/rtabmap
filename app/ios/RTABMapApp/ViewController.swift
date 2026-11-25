@@ -2007,6 +2007,11 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                 print("ManualPhotoStore.recordSavedDB failed: \(error)")
             }
             self.mUnsavedRecording = false
+            if let previousName = previousName, previousName != fileName,
+               !FileManager.default.fileExists(atPath: self.getDocumentDirectory().appendingPathComponent(previousName).path) {
+                // The save moved the file, so its earlier name is gone.
+                ScanFileChange(kind: .renamed, fileName: fileName, previousFileName: previousName).post()
+            }
             ScanFileChange(kind: .saved, fileName: fileName).post()
             do {
                 let tmpDatabase = self.getDocumentDirectory().appendingPathComponent(self.RTABMAP_TMP_DB)
