@@ -132,11 +132,12 @@ final class ManualPhotoStore {
     /// If `previous` is a different name whose file still exists, the save made a second scan: `previous`
     /// keeps the current session, and `filename` gets a copy of it that becomes current. Otherwise the
     /// current session now names `filename`.
-    /// When `overwroteExisting` is true, the other sessions that name `filename` belonged to the replaced
-    /// file and are deleted. When it is false, nothing is deleted.
+    /// When `overwroteExisting` is true and the replaced file was another scan (`previous` is not
+    /// `filename`), the other sessions that name `filename` belonged to that scan and are deleted.
+    /// In every other case nothing is deleted: a scan saved under its own name replaces only itself.
     func recordSavedDB(filename: String, previous: String? = nil, overwroteExisting: Bool = false) throws {
         // Listed before the current session or its copy takes the name, so neither is ever among them.
-        let replaced = overwroteExisting
+        let replaced = overwroteExisting && previous != filename
             ? try sessions(naming: filename).filter { $0.session.sessionId != currentSessionId }
             : []
 

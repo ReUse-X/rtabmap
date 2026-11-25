@@ -152,6 +152,19 @@ final class PhotosFollowScanTests: StoreTestCase {
         XCTAssertEqual(store.currentPhotoCount(), 1)
     }
 
+    /// A scan saved under its own name replaces only itself, so no session is deleted,
+    /// whatever else names the file.
+    func testSavingAScanUnderItsOwnNameNeverDeletesASession() throws {
+        let own = try makeSession(for: "A.db", photos: 1)
+        try writeSession(id: "OTHER", dbFilename: "A.db", createdAt: Date(timeIntervalSince1970: 1_000))
+        touch("A.db")
+        XCTAssertEqual(store.attachSession(for: "A.db"), own)
+        try store.recordSavedDB(filename: "A.db", previous: "A.db", overwroteExisting: true)
+        XCTAssertEqual(Set(try sessionsOnDisk().map(\.folder)), [own, "OTHER"])
+        XCTAssertEqual(store.currentSessionId, own)
+        XCTAssertEqual(store.photos(in: own).count, 1)
+    }
+
     func testSavingOverAScanWithPhotosWhenNoSessionIsCurrentDropsTheOldSession() throws {
         try makeSession(for: "Kitchen.db", photos: 3)
         touch("Kitchen.db")
