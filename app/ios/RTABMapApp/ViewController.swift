@@ -1725,6 +1725,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                                 } catch {
                                     print("ManualPhotoStore.databaseMoved (recovery) failed: \(error)")
                                 }
+                                ScanFileChange(kind: .recovered, fileName: fileName).post()
                             }
                             if(indicator != nil)
                             {
@@ -1902,6 +1903,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             } catch {
                 print("ManualPhotoStore.recordSavedDB failed: \(error)")
             }
+            ScanFileChange(kind: .saved, fileName: fileName).post()
             do {
                 let tmpDatabase = self.getDocumentDirectory().appendingPathComponent(self.RTABMAP_TMP_DB)
                 try FileManager.default.removeItem(at: tmpDatabase)
@@ -2304,6 +2306,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                             } catch {
                                 print("ManualPhotoStore.databaseMoved (rename) failed: \(error)")
                             }
+                            ScanFileChange(kind: .renamed, fileName: fileName, previousFileName: fileURL.lastPathComponent).post()
                             print("File \(fileURL) renamed to \(filePath)")
                         }
                         catch {
@@ -2326,6 +2329,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                         } catch {
                             print("ManualPhotoStore.databaseMoved (rename) failed: \(error)")
                         }
+                        ScanFileChange(kind: .renamed, fileName: fileName, previousFileName: fileURL.lastPathComponent).post()
                         print("File \(fileURL) renamed to \(filePath)")
                     }
                     catch {
@@ -2960,6 +2964,7 @@ extension ViewController: DatabaseViewDelegate {
         do {
             try FileManager.default.removeItem(at: databaseURL)
             ManualPhotoStore.shared.deleteSession(for: databaseURL.lastPathComponent)
+            ScanFileChange(kind: .deleted, fileName: databaseURL.lastPathComponent).post()
             print("File \(databaseURL) deleted")
         }
         catch {
