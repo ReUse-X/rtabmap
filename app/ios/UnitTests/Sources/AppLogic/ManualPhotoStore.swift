@@ -1,0 +1,1 @@
+../../../RTABMapApp/ManualPhotoStore.swift

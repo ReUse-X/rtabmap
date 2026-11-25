@@ -29,13 +29,20 @@ final class ManualPhotoStore {
 
     private let fm = FileManager.default
 
+    /// The folder that holds `ManualPhotos`. `nil` means the app's Documents folder.
+    private let documentsDirectory: URL?
+
+    init(documentsDirectory: URL? = nil) {
+        self.documentsDirectory = documentsDirectory
+    }
+
     /// Current session id. `nil` until `startNewSession` or `attachSession` is called.
     private(set) var currentSessionId: String?
 
     // MARK: - Paths
 
     private var rootURL: URL {
-        let docs = fm.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let docs = documentsDirectory ?? fm.urls(for: .documentDirectory, in: .userDomainMask)[0]
         return docs.appendingPathComponent(rootFolderName, isDirectory: true)
     }
 
