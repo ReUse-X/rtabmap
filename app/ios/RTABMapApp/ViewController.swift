@@ -677,6 +677,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     
     private func updateState(state: State)
     {
+        if rtabmap == nil { return } // torn down
         print("State: \(state)")
         
         if(mState != state)
@@ -1352,6 +1353,41 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         rtabmap = nil
         context = nil
         EAGLContext.setCurrent(nil)
+    }
+
+    /// True while the screen can be closed safely: nothing is being recorded and no background work is
+    /// using the native session. That is in the states WELCOME, CAMERA, IDLE and VISUALIZING.
+    var canTearDown: Bool {
+        switch mState {
+        case .STATE_WELCOME, .STATE_CAMERA, .STATE_IDLE, .STATE_VISUALIZING:
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// Stops the camera and the AR session, closes the open database without saving it, releases the native
+    /// session and lets the screen dim again. For an app that shows this screen inside its own interface and
+    /// wants its memory and its files back when the screen goes away. Does nothing and returns false while
+    /// `canTearDown` is false. A controller that was torn down must not be shown again; create a new one.
+    @discardableResult
+    func tearDown() -> Bool {
+        guard rtabmap != nil else { return true }       // already torn down
+        guard canTearDown else { return false }
+        NotificationCenter.default.removeObserver(self) // its handlers call into the native session
+        session.pause()
+        locationManager?.stopUpdatingLocation()
+        locationManager = nil
+        isPaused = true
+        EAGLContext.setCurrent(context)
+        rtabmap = nil                                   // destroys the native session: stops the camera, closes the database unsaved
+        EAGLContext.setCurrent(nil)
+        ManualPhotoStore.shared.detach()
+        ViewController.previewImages.removeAll()
+        menuButton.menu = nil                           // the menu actions hold this controller
+        viewButton.menu = nil
+        UIApplication.shared.isIdleTimerDisabled = false
+        return true
     }
     
     var firstTouch: UITouch?
