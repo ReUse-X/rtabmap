@@ -1720,7 +1720,11 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                             
                         }, completion:{
                             if success {
-                                try? ManualPhotoStore.shared.databaseMoved(from: self.RTABMAP_TMP_DB, to: fileName)
+                                do {
+                                    try ManualPhotoStore.shared.databaseMoved(from: self.RTABMAP_TMP_DB, to: fileName)
+                                } catch {
+                                    print("ManualPhotoStore.databaseMoved (recovery) failed: \(error)")
+                                }
                             }
                             if(indicator != nil)
                             {
@@ -1893,7 +1897,11 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
             }
             alert.addAction(yes)
             self.present(alert, animated: true, completion: nil)
-            try? ManualPhotoStore.shared.recordSavedDB(filename: fileName, previous: previousName, overwroteExisting: overwroteExisting)
+            do {
+                try ManualPhotoStore.shared.recordSavedDB(filename: fileName, previous: previousName, overwroteExisting: overwroteExisting)
+            } catch {
+                print("ManualPhotoStore.recordSavedDB failed: \(error)")
+            }
             do {
                 let tmpDatabase = self.getDocumentDirectory().appendingPathComponent(self.RTABMAP_TMP_DB)
                 try FileManager.default.removeItem(at: tmpDatabase)
@@ -2291,7 +2299,11 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                         
                         do {
                             try FileManager.default.moveItem(at: fileURL, to: URL(fileURLWithPath: filePath))
-                            try? ManualPhotoStore.shared.databaseMoved(from: fileURL.lastPathComponent, to: fileName)
+                            do {
+                                try ManualPhotoStore.shared.databaseMoved(from: fileURL.lastPathComponent, to: fileName)
+                            } catch {
+                                print("ManualPhotoStore.databaseMoved (rename) failed: \(error)")
+                            }
                             print("File \(fileURL) renamed to \(filePath)")
                         }
                         catch {
@@ -2309,7 +2321,11 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
                 } else {
                     do {
                         try FileManager.default.moveItem(at: fileURL, to: URL(fileURLWithPath: filePath))
-                        try? ManualPhotoStore.shared.databaseMoved(from: fileURL.lastPathComponent, to: fileName)
+                        do {
+                            try ManualPhotoStore.shared.databaseMoved(from: fileURL.lastPathComponent, to: fileName)
+                        } catch {
+                            print("ManualPhotoStore.databaseMoved (rename) failed: \(error)")
+                        }
                         print("File \(fileURL) renamed to \(filePath)")
                     }
                     catch {
