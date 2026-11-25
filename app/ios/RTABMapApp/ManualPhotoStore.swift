@@ -41,9 +41,13 @@ final class ManualPhotoStore {
 
     // MARK: - Paths
 
+    /// The folder that holds `ManualPhotos` and the scan files themselves.
+    private var documentsURL: URL {
+        documentsDirectory ?? fm.urls(for: .documentDirectory, in: .userDomainMask)[0]
+    }
+
     private var rootURL: URL {
-        let docs = documentsDirectory ?? fm.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        return docs.appendingPathComponent(rootFolderName, isDirectory: true)
+        documentsURL.appendingPathComponent(rootFolderName, isDirectory: true)
     }
 
     private func sessionURL(_ sessionId: String) -> URL {
@@ -96,25 +100,63 @@ final class ManualPhotoStore {
 
     /// Re-attach to an existing session folder for a saved DB.
     /// Returns the sessionId if found, else nil.
+    /// When several sessions name the file, attaches the one with the latest `createdAt`;
+    /// equal dates are settled by the smaller `sessionId`.
     @discardableResult
     func attachSession(for dbFilename: String) -> String? {
-        guard let folders = try? existingSessionFolders() else { return nil }
-        for folder in folders {
-            if let s = try? readSessionJSON(at: folder), s.dbFilename == dbFilename {
-                currentSessionId = s.sessionId
-                return s.sessionId
+        guard let candidates = try? sessions(naming: dbFilename) else { return nil }
+        let chosen = candidates.min { a, b in
+            if a.session.createdAt != b.session.createdAt {
+                return a.session.createdAt > b.session.createdAt
             }
+            return a.session.sessionId < b.session.sessionId
         }
-        currentSessionId = nil
-        return nil
+        currentSessionId = chosen?.session.sessionId
+        return currentSessionId
     }
 
-    /// When a tmp DB is saved as a new name, update the session.json to point at the new filename.
-    func recordSavedDB(filename: String) throws {
+    /// The scan file `oldFilename` is now called `newFilename`: it was renamed, or recovered under a new name.
+    /// Its sessions follow it. Sessions that named `newFilename` before belonged to a file that has just been
+    /// replaced, and are deleted. Works without a current session.
+    func databaseMoved(from oldFilename: String, to newFilename: String) throws {
+        guard oldFilename != newFilename else { return }
+
+        // Both lists are taken before anything changes, so the sessions that follow the file
+        // are never among those deleted.
+        let following = try sessions(naming: oldFilename)
+        let replaced = try sessions(naming: newFilename)
+
+        for var entry in following {
+            entry.session.dbFilename = newFilename
+            try writeSessionJSON(entry.session, at: entry.folder)
+        }
+        for entry in replaced {
+            try fm.removeItem(at: entry.folder)
+            if currentSessionId == entry.session.sessionId { currentSessionId = nil }
+        }
+    }
+
+    /// The current session's scan was saved as `filename`. `previous` is the file name the scan had before
+    /// this save, nil for a scan that was never saved.
+    /// Sessions other than the current one that name `filename` belonged to a file this save replaced, and
+    /// are deleted. Then, if `previous` is a different name whose file still exists, the save made a second
+    /// scan: `previous` keeps the current session, and `filename` gets a copy of it that becomes current.
+    /// Otherwise the current session now names `filename`.
+    func recordSavedDB(filename: String, previous: String? = nil) throws {
+        for entry in try sessions(naming: filename) where entry.session.sessionId != currentSessionId {
+            try fm.removeItem(at: entry.folder)
+        }
+
         guard let url = currentSessionURL() else { return }
         var s = try readSessionJSON(at: url)
-        s.dbFilename = filename
-        try writeSessionJSON(s, at: url)
+
+        if let previous = previous, previous != filename,
+           fm.fileExists(atPath: documentsURL.appendingPathComponent(previous).path) {
+            currentSessionId = try copySession(s, from: url, naming: filename)
+        } else {
+            s.dbFilename = filename
+            try writeSessionJSON(s, at: url)
+        }
     }
 
     /// Clear the current session pointer without deleting files (e.g. after opening a saved DB).
@@ -228,6 +270,42 @@ final class ManualPhotoStore {
         guard fm.fileExists(atPath: rootURL.path) else { return [] }
         return try fm.contentsOfDirectory(at: rootURL, includingPropertiesForKeys: nil)
             .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
+    }
+
+    /// Every session whose session.json names `dbFilename`, with its folder.
+    private func sessions(naming dbFilename: String) throws -> [(folder: URL, session: SessionJSON)] {
+        try existingSessionFolders().compactMap { folder in
+            guard let s = try? readSessionJSON(at: folder), s.dbFilename == dbFilename else { return nil }
+            return (folder, s)
+        }
+    }
+
+    /// Copies the session `session`, stored in `source`, to a new session that names `dbFilename`.
+    /// Returns the new session's id.
+    private func copySession(_ session: SessionJSON, from source: URL, naming dbFilename: String) throws -> String {
+        let id = UUID().uuidString
+        let target = sessionURL(id)
+        try fm.createDirectory(at: target, withIntermediateDirectories: false)
+        do {
+            // session.json is written before anything else: a copy cut short by a crash then names
+            // the new file, and the old file keeps a single, complete session.
+            var copy = session
+            copy.sessionId = id
+            copy.createdAt = Date()
+            copy.dbFilename = dbFilename
+            try writeSessionJSON(copy, at: target)
+
+            // The photos and their JSON files are copied as they are: each photo's JSON keeps
+            // the sessionId it was captured under.
+            let items = try fm.contentsOfDirectory(at: source, includingPropertiesForKeys: nil)
+            for item in items where item.lastPathComponent != sessionFileName {
+                try fm.copyItem(at: item, to: target.appendingPathComponent(item.lastPathComponent))
+            }
+        } catch {
+            try? fm.removeItem(at: target)
+            throw error
+        }
+        return id
     }
 
     private func readSessionJSON(at folder: URL) throws -> SessionJSON {
