@@ -1,7 +1,10 @@
 import Foundation
 
-/// What happened to a scan file in the app's Documents folder. Posted on the main thread, after the
-/// change is complete on disk.
+/// What happened to a scan file in the app's Documents folder. Posted on the main thread, from inside
+/// the scanning screen's own flow, after the change is complete on disk and the scan's manual photo
+/// session has been updated. Observers run before that flow continues, so they should only take note.
+/// The scanner may still have the file open: read or move it only after the scanning screen has closed.
+/// A save that moves the file to a new name posts `.renamed` and then `.saved`.
 struct ScanFileChange: Equatable {
     enum Kind: String { case saved, renamed, recovered, deleted }
 

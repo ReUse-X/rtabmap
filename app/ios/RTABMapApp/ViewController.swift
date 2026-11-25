@@ -44,6 +44,8 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     private var mDataRecording = false
     
     private var mReviewRequested = false
+    /// Set by an app that shows this screen inside its own interface; nil in the standalone app. Set it after
+    /// creating the controller and before the screen is shown. `ScannerHost` describes what a host has to do.
     var host: ScannerHost?
     private var mHostActionStarted = false
     private var mUnsavedRecording = false
@@ -207,6 +209,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         mMaximumMemory = getAvailableMemory()
         
         super.viewDidLoad()
+        if host != nil { setDefaultsFromSettingsBundle() } // a host app may not have registered them; must run before the defaults observer below is added
         // Do any additional setup after loading the view.
         
         self.toastLabel.isHidden = true
@@ -1406,10 +1409,10 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
 
     /// Stops the camera and the AR session, closes the open database without saving it, releases the native
     /// session and lets the screen dim again. For an app that shows this screen inside its own interface and
-    /// wants its memory and its files back when the screen goes away. Does nothing and returns false while
-    /// `canTearDown` is false. After a successful teardown the screen ignores touches and must not be shown
-    /// again; create a new one.
-    @discardableResult
+    /// wants its memory and its files back when the screen goes away. Call it on the main thread, with nothing
+    /// presented on top of the screen. Returns false, and does nothing, while `canTearDown` is false: the
+    /// screen is then still live and must stay on display. After a successful teardown the screen ignores
+    /// touches, `host` is nil, and the screen must not be shown again; create a new one.
     func tearDown() -> Bool {
         guard rtabmap != nil else { return true }       // already torn down
         guard canTearDown else { return false }
@@ -1419,6 +1422,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         locationManager?.stopUpdatingLocation()
         locationManager = nil
         isPaused = true
+        progressView = nil                              // a late draw would otherwise dismiss a progress alert that is gone
         EAGLContext.setCurrent(context)
         rtabmap = nil                                   // destroys the native session: stops the camera, closes the database unsaved
         EAGLContext.setCurrent(nil)
@@ -1426,6 +1430,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         ViewController.previewImages.removeAll()
         menuButton.menu = nil                           // the menu actions hold this controller
         viewButton.menu = nil
+        host = nil                                      // dismiss() behaves normally again; lets go of the host's closure
         UIApplication.shared.isIdleTimerDisabled = false
         return true
     }
@@ -1433,7 +1438,7 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     /// "Close Scanner" in the menu, when a host is set.
     private func requestClose() {
         guard canTearDown else { return }
-        guard mUnsavedRecording else { closeForHost(); return }
+        guard mUnsavedRecording, mMapNodes > 0 else { closeForHost(); return } // with no nodes there is nothing to save
         let alert = UIAlertController(title: "Scan Not Saved",
                                       message: "This scan has changes that are not saved.",
                                       preferredStyle: .alert)
@@ -1448,7 +1453,6 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     private func closeForHost() {
         let didClose = host?.didClose
         guard tearDown() else { return }
-        host = nil          // from here on dismiss() behaves normally again
         didClose?()
     }
     
