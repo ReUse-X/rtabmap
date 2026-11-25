@@ -2364,10 +2364,12 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
         }, completion:{
             // main thread
             if(status == -1) {
+                self.updateState(state: .STATE_IDLE) // the database is open; without this the screen stays in processing
                 self.dismiss(animated: true)
                 self.showToast(message: "The map is loaded but optimization of the map's graph has failed, so the map cannot be shown. Change the Graph Optimizer approach used or enable/disable if the graph is optimized from graph end in \"Settings -> Mapping...\" and try opening again.", seconds: 4)
             }
             else if(status == -2) {
+                self.updateState(state: .STATE_IDLE) // the database is open; without this the screen stays in processing
                 self.dismiss(animated: true)
                 self.showToast(message: "Failed to open database: Out of memory! Try again after lowering Point Cloud Density in Settings.", seconds: 4)
             }
