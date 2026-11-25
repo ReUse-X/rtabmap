@@ -1369,11 +1369,13 @@ class ViewController: GLKViewController, ARSessionDelegate, RTABMapObserver, UIP
     /// Stops the camera and the AR session, closes the open database without saving it, releases the native
     /// session and lets the screen dim again. For an app that shows this screen inside its own interface and
     /// wants its memory and its files back when the screen goes away. Does nothing and returns false while
-    /// `canTearDown` is false. A controller that was torn down must not be shown again; create a new one.
+    /// `canTearDown` is false. After a successful teardown the screen ignores touches and must not be shown
+    /// again; create a new one.
     @discardableResult
     func tearDown() -> Bool {
         guard rtabmap != nil else { return true }       // already torn down
         guard canTearDown else { return false }
+        view.isUserInteractionEnabled = false           // its buttons would call into the released native session
         NotificationCenter.default.removeObserver(self) // its handlers call into the native session
         session.pause()
         locationManager?.stopUpdatingLocation()
